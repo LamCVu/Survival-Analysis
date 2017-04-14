@@ -1,0 +1,85 @@
+
+library(car)
+library(survival)
+library(flexsurv)
+library(KMsurv)
+
+#data source: https://www.umass.edu/statdata/statdata/data/actg320.txt
+data <- read.csv("C:/Users/Lam/Desktop/actg320.csv",header = TRUE)
+#categorical censor,censor_d,tx,txgrp,trat2,sex,raceth,ivdrug,hemophil,karnof,
+# Survival object and survfit
+#using survival library function Surv() to creat combined object linking censored flag of AIDS to time.
+
+censurv<-Surv(time,censor)
+#create Kaplan-Meier curve to figure out proportion of individuals who don't have AIDS having confidence interval at 95% using log.
+fit_KM <- survfit(censurv~1,type="kaplan-meier",data=data)
+#plot survival
+plot(fit_KM, main="Survival Function for Time", xlab="days", ylab="p")
+#print restricted means
+print(fit_KM,print.rmean=TRUE) #events is censrec==1
+
+#plot cumulative hazard risk of getting AIDS.
+plot(fit_KM, fun="cumhaz", main="Cumulative Hazard Function for Time", xlab="days", ylab="p")
+#cumulative events (f(y)=1-y)
+plot(fit_KM, fun="event",main="Cumulative Hazard function for rectime (K-M estimate)", xlab="days", ylab="p") # cumulative event of having aids
+
+#find categorical variables that may influence on the respone.
+leg.txt<-c("1", "0")
+fit <- survfit(censurv~strat2)
+plot(fit, col=c(2,4),main="Survival Curve of strat2")
+legend("bottomright",leg.txt,col=c(2,4),lty=1)
+#the higher line shows that better survival rate.
+
+fit <- survfit(censurv~ivdrug)
+plot(fit, col=c(2,4,6),main="Survival Curve of ivdrug")
+legend("bottomright",c("1","3","2"),col=c(2,4,6),lty=1)
+
+fit <- survfit(censurv~sex)
+plot(fit, col=c(2,4),main="Survival Curve of Sex")
+legend("bottomright",c("1","2"),col=c(2,4),lty=1)
+
+fit <- survfit(censurv~raceth)
+plot(fit, col=c(2,4,6,8,1),main="Survival Curve of Race")
+legend("bottomright",c("1","2","3","5","4"),col=c(2,4,6,8,1),lty=1)
+
+fit <- survfit(censurv~karnof)
+plot(fit, col=c(2,4,6,8),main="Survival Curve of Karnof")
+legend("bottomright",c("100","90","70","80"),col=c(2,4,6,8),lty=1)
+
+v.age=ifelse(age<25,"1",ifelse(age<50,"2",ifelse(age<75,"3","4")))
+fit <- survfit(censurv~v.age)
+plot(fit, col=c(2,4,6),main="Survival Curve of Age")
+legend("bottomright",c("<25","25 to 50","older than 50"),col=c(2,4),lty=1)
+ 
+#using library(flexsurv)
+fit_exp<-flexsurvreg(censurv~1, dist="exp")
+fit_weibull<-flexsurvreg(censurv~1, dist="weibull")
+fit_gamma<-flexsurvreg(censurv~1, dist="gamma")
+fit_gengamma<-flexsurvreg(censurv~1, dist="gengamma")
+fit_genf<-flexsurvreg(censurv~1, dist="genf")
+fit_lognormal<-flexsurvreg(censurv~1, dist="lnorm")
+fit_gompertz<-flexsurvreg(censurv~1, dist="gompertz")
+
+#AIC is reported by flexsurv
+fit_exp$AIC
+fit_weibull$AIC
+fit_gamma$AIC
+fit_gengamma$AIC
+fit_lognormal$AIC
+fit_gompertz$AIC
+
+full.model = glm(censor ~ time+strat2+sex+raceth+ivdrug+karnof+age,data =data,trace = FALSE)
+empty.model = glm(censor ~ 1,data =data,trace = FALSE)
+best.forward.AIC = step(empty.model,scope = list(lower = empty.model, upper = full.model),direction = "forward", criterion = "AIC", trace = FALSE)
+best.backward.AIC = step(full.model,scope = list(lower = empty.model, upper = full.model),direction = "backward", criterion = "AIC", trace = FALSE)
+best.FB.AIC = step(empty.model,scope = list(lower = empty.model, upper = full.model),direction = "both", criterion = "AIC", trace = FALSE)
+best.BF.AIC = step(full.model,scope = list(lower = empty.model, upper = full.model),direction = "both", criterion = "AIC", trace = FALSE)
+
+#all step functions agree on the same model
+best.forward.AIC$call
+best.backward.AIC$call
+best.FB.AIC$call
+best.BF.AIC$call
+
+final.mod=glm(censor ~ time + strat2 + ivdrug + karnof + age,family=binomial(logit),data=data)
+
