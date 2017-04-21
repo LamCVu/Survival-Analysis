@@ -10,6 +10,11 @@ data <- read.csv("C:/Users/Lam/Desktop/actg320.csv",header = TRUE)
 # Survival object and survfit
 #using survival library function Surv() to creat combined object linking censored flag of AIDS to time.
 
+#scatterplot matrix
+md=data[,-c(1,4,5,6,7,12,14,15)]
+dim(md)
+scatterplotMatrix(md)
+
 censurv<-Surv(time,censor)
 #create Kaplan-Meier curve to figure out proportion of individuals who don't have AIDS having confidence interval at 95% using log.
 fit_KM <- survfit(censurv~1,type="kaplan-meier",data=data)
